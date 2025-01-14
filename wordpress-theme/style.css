@@ -1,0 +1,54 @@
+/*
+Theme Name: Your Theme Name
+Theme URI: http://example.com/
+Author: Your Name
+Author URI: http://example.com/
+Description: A brief description of your theme.
+Version: 1.0
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: yfit
+Tags: custom-background, custom-logo, custom-menu, featured-images
+
+This theme, like WordPress, is licensed under the GPL.
+Use it to make something cool, have fun, and share what you've learned with others.
+*/
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.site-header {
+  /* header styles if any */
+}
+
+.site-main {
+  flex: 1 0 auto;
+}
+
+.site-footer {
+  flex-shrink: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  padding: 8px;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 400;
+}
+.skip-link:focus {
+  top: 0;
+  z-index: 99999999;
+}
