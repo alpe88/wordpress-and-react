@@ -1,0 +1,9 @@
+{
+  "header": "react-header",
+  "footer": "react-footer",
+  "front_page": "react-front-page",
+  "archive": "react-archive",
+  "not_found": "react-not-found",
+  "page": "react-page",
+  "blog": "react-blog"
+}
