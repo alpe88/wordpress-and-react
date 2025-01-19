@@ -1,131 +1,106 @@
 <?php
 function enqueue_react_app_scripts() {
-    $manifest_path = get_template_directory() . '/assets/js/manifest.json';
+    //May need to update 
+    $manifest_path = get_template_directory() . '/assets/js/.vite/manifest.json';
     if ( ! file_exists( $manifest_path ) ) {
         return;
     }
+    $manifest = json_decode( file_get_contents( $manifest_path ), true );
+    $script_uri = get_template_directory_uri() . '/assets/js/';
+    
+    // Global data object
+    $global_data = array(
+        'theme'  => get_theme_settings(),
+        'header' => get_menu_data('primary'),
+        'footer' => get_menu_data('footer'),
+    );
 
-    $manifest  = json_decode( file_get_contents( $manifest_path ), true );
-    $base_uri  = get_template_directory_uri() . '/assets/js/';
-
-    // 1. Always load header and footer bundles (if you want them on all pages)
-    // ----------------------------------------------------------------------
-    // Keys might be: 'header' or 'src/entries/header.tsx'—adjust to match your manifest.
-    if ( isset($manifest['header']['file']) ) {
+    // Enqueue header script
+    if ( isset( $manifest['src/entries/header.tsx']['file'] ) ) {
         wp_enqueue_script(
             'react-app-header',
-            $base_uri . $manifest['header']['file'],
-            array(),
+            $script_uri . $manifest['src/entries/header.tsx']['file'],
+            array('react-cdn', 'react-dom-cdn'),
             null,
             true
         );
-        if ( isset($manifest['header']['css']) ) {
-            foreach($manifest['header']['css'] as $css_file) {
-                wp_enqueue_style('react-app-header-css', $base_uri.$css_file, array(), null);
-            }
-        }
 
-        // For example, localize your header data here
-        $menu_data     = get_menu_data('primary');
-        $theme_settings = get_theme_settings();
-        wp_localize_script('react-app-header', 'WPGlobalDataHeader', array(
-            'menu'  => $menu_data,
-            'theme' => $theme_settings,
-        ));
-    }
-
-    if ( isset($manifest['footer']['file']) ) {
-        wp_enqueue_script(
-            'react-app-footer',
-            $base_uri . $manifest['footer']['file'],
-            array(),
-            null,
-            true
-        );
-        if ( isset($manifest['footer']['css']) ) {
-            foreach($manifest['footer']['css'] as $css_file) {
-                wp_enqueue_style('react-app-footer-css', $base_uri.$css_file, array(), null);
-            }
-        }
-
-        // Localize any footer data if needed
-        $theme_settings = get_theme_settings();
-        wp_localize_script('react-app-footer', 'WPGlobalDataFooter', array(
-            'theme' => $theme_settings,
-        ));
-    }
-
-    // 2. Page-specific scripts using a "switch(true)" pattern
-    //    This approach checks conditionals in a switch to set the right key+handle.
-    // ----------------------------------------------------------------------
-    $key    = '';
-    $handle = '';
-
-    switch(true) {
-        case is_front_page():
-            // This matches "front_page" in your rollup input
-            $key    = 'front_page';
-            $handle = 'react-app-front-page';
-            break;
-
-        case is_archive():
-            // E.g., category, tag, custom post type archive
-            $key    = 'archive';
-            $handle = 'react-app-archive';
-            break;
-
-        case is_404():
-            $key    = 'not_found';
-            $handle = 'react-app-not-found';
-            break;
-
-        case is_home(): 
-            // The blog index page (WordPress "home" setting for posts, often 'index')
-            $key    = 'index'; 
-            $handle = 'react-app-index';
-            break;
-
-        case is_page(): 
-            // Generic page - e.g. 'page.tsx'
-            $key    = 'page';
-            $handle = 'react-app-page';
-            break;
-
-        default:
-            // Optionally do nothing or set a fallback
-            break;
-    }
-
-    // 3. Enqueue the matching script if found
-    if ( $key && isset($manifest[ $key ]['file']) ) {
-        wp_enqueue_script(
-            $handle,
-            $base_uri . $manifest[$key]['file'],
-            array(),
-            null,
-            true
-        );
-        if ( isset($manifest[$key]['css']) ) {
-            foreach($manifest[$key]['css'] as $css_file) {
+        // Enqueue associated CSS if present
+        if ( isset( $manifest['src/entries/header.tsx']['css'] ) ) {
+            foreach ( $manifest['src/entries/header.tsx']['css'] as $css_file ) {
                 wp_enqueue_style(
-                    $handle . '-css',
-                    $base_uri . $css_file,
+                    'react-app-header-css',
+                    $script_uri . $css_file,
                     array(),
                     null
                 );
             }
         }
-        
-        // Localize page data
-        $page_data   = get_page_data();
-        $theme_data  = get_theme_settings();
-        wp_localize_script($handle, 'WPGlobalDataPage', array(
-            'page'  => $page_data,
-            'theme' => $theme_data,
-        ));
+    }
+
+    // Enqueue footer script
+    if ( isset( $manifest['src/entries/footer.tsx']['file'] ) ) {
+        wp_enqueue_script(
+            'react-app-footer',
+            $script_uri . $manifest['src/entries/footer.tsx']['file'],
+            array('react-cdn', 'react-dom-cdn'),
+            null,
+            true
+        );
+
+        // Enqueue associated CSS if present
+        if ( isset( $manifest['src/entries/footer.tsx']['css'] ) ) {
+            foreach ( $manifest['src/entries/footer.tsx']['css'] as $css_file ) {
+                wp_enqueue_style(
+                    'react-app-footer-css',
+                    $script_uri . $css_file,
+                    array(),
+                    null
+                );
+            }
+        }
+    }
+
+    // Page-Specific Script
+    $manifest_key = '';
+    $handle = '';
+    if ( is_front_page() ) {
+        $manifest_key = 'src/entries/front-page.tsx';
+        $handle       = 'react-app-front-page';
+    } elseif ( is_page() ) {
+        $manifest_key = 'src/entries/page.tsx';
+        $handle       = 'react-app-page';
+    }
+
+    if ( $manifest_key && isset( $manifest[ $manifest_key ]['file'] ) ) {
+        wp_enqueue_script(
+            $handle,
+            $script_uri . $manifest[ $manifest_key ]['file'],
+            array('react-cdn', 'react-dom-cdn'),
+            null,
+            true
+        );
+
+        // Enqueue associated CSS if present
+        if ( isset( $manifest[ $manifest_key ]['css'] ) ) {
+            foreach ( $manifest[ $manifest_key ]['css'] as $css_file ) {
+                wp_enqueue_style(
+                    $handle . '-css',
+                    $script_uri . $css_file,
+                    array(),
+                    null
+                );
+            }
+        }
+
+        // Add page-specific data
+        $global_data['page'] = get_page_data();
+
+        // Pass global data to JS
+        wp_localize_script( $handle, 'WPGlobalData', $global_data );
     }
 }
-add_action('wp_enqueue_scripts', 'enqueue_react_app_scripts');
+add_action( 'wp_enqueue_scripts', 'enqueue_react_app_scripts', 999 );
 /**
  * Add type="module" for certain script handles.
  */
@@ -171,12 +146,25 @@ function get_page_data() {
         return null;
     }
 
+    $featured_image_id = get_post_thumbnail_id( $post->ID );
+
+    // Get responsive image URLs
+    $responsive_images = array(
+        'small'  => wp_get_attachment_image_src( $featured_image_id, 'small' )[0] ?? null,
+        'medium' => wp_get_attachment_image_src( $featured_image_id, 'medium' )[0] ?? null,
+        'large'  => wp_get_attachment_image_src( $featured_image_id, 'large' )[0] ?? null,
+        'xlarge' => wp_get_attachment_image_src( $featured_image_id, 'xlarge' )[0] ?? null,
+    );
+
     return array(
         'id'             => $post->ID,
         'title'          => get_the_title( $post->ID ),
         'content'        => apply_filters( 'the_content', $post->post_content ),
         'excerpt'        => get_the_excerpt( $post->ID ),
-        'featured_image' => get_the_post_thumbnail_url( $post->ID, 'full' ),
+        'featured_image' => array(
+            'default'     => get_the_post_thumbnail_url( $post->ID, 'full' ),
+            'responsive'  => $responsive_images,
+        ),
         // Add more fields as needed
     );
 }
