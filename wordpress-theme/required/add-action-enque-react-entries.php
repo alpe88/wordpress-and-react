@@ -1,21 +1,22 @@
 <?php
 function enqueue_react_app_scripts() {
-    //May need to update 
     $manifest_path = get_template_directory() . '/assets/js/.vite/manifest.json';
     if ( ! file_exists( $manifest_path ) ) {
         return;
     }
+
     $manifest = json_decode( file_get_contents( $manifest_path ), true );
     $script_uri = get_template_directory_uri() . '/assets/js/';
     
-    // Global data object
+    // Global data object (header, footer, theme).
+    // Page data will be added below only if a page-specific script is enqueued.
     $global_data = array(
         'theme'  => get_theme_settings(),
         'header' => get_menu_data('primary'),
         'footer' => get_menu_data('footer'),
     );
 
-    // Enqueue header script
+    // 1. Enqueue header script
     if ( isset( $manifest['src/entries/header.tsx']['file'] ) ) {
         wp_enqueue_script(
             'react-app-header',
@@ -38,7 +39,7 @@ function enqueue_react_app_scripts() {
         }
     }
 
-    // Enqueue footer script
+    // 2. Enqueue footer script
     if ( isset( $manifest['src/entries/footer.tsx']['file'] ) ) {
         wp_enqueue_script(
             'react-app-footer',
@@ -61,9 +62,10 @@ function enqueue_react_app_scripts() {
         }
     }
 
-    // Page-Specific Script
+    // 3. Page-Specific Script
     $manifest_key = '';
-    $handle = '';
+    $handle       = '';
+
     if ( is_front_page() ) {
         $manifest_key = 'src/entries/front-page.tsx';
         $handle       = 'react-app-front-page';
@@ -96,11 +98,15 @@ function enqueue_react_app_scripts() {
         // Add page-specific data
         $global_data['page'] = get_page_data();
 
-        // Pass global data to JS
-        wp_localize_script( $handle, 'WPGlobalData', $global_data );
+        // Build inline JS snippet for WPGlobalData
+        $inline_script = 'const WPGlobalData = ' . json_encode( $global_data ) . ';';
+
+        // Inject inline script BEFORE this script, so WPGlobalData is defined
+        wp_add_inline_script( $handle, $inline_script, 'before' );
     }
 }
 add_action( 'wp_enqueue_scripts', 'enqueue_react_app_scripts', 999 );
+
 /**
  * Add type="module" for certain script handles.
  */
