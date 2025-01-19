@@ -2,28 +2,29 @@
 function enqueue_react_app_scripts() {
     $manifest_path = get_template_directory() . '/assets/js/.vite/manifest.json';
     if ( ! file_exists( $manifest_path ) ) {
+        // Optionally log or var_dump here
         return;
     }
 
     $manifest = json_decode( file_get_contents( $manifest_path ), true );
     $script_uri = get_template_directory_uri() . '/assets/js/';
     
-    // Global data object (header, footer, theme).
-    // Page data will be added below only if a page-specific script is enqueued.
+    // 1) Prepare base data used across scripts (theme, header, footer)
     $global_data = array(
         'theme'  => get_theme_settings(),
         'header' => get_menu_data('primary'),
         'footer' => get_menu_data('footer'),
+        // 'page' will be set below if we have a page-specific script
     );
 
-    // 1. Enqueue header script
+    // 2) Header Script
     if ( isset( $manifest['src/entries/header.tsx']['file'] ) ) {
         wp_enqueue_script(
             'react-app-header',
             $script_uri . $manifest['src/entries/header.tsx']['file'],
             array('react-cdn', 'react-dom-cdn'),
             null,
-            true
+            true // load in footer
         );
 
         // Enqueue associated CSS if present
@@ -37,9 +38,13 @@ function enqueue_react_app_scripts() {
                 );
             }
         }
+
+        // Localize data for the header script
+        // This sets `window.WPGlobalData` with theme + menus (no page yet).
+        wp_localize_script( 'react-app-header', 'WPGlobalData', $global_data );
     }
 
-    // 2. Enqueue footer script
+    // 3) Footer Script
     if ( isset( $manifest['src/entries/footer.tsx']['file'] ) ) {
         wp_enqueue_script(
             'react-app-footer',
@@ -60,9 +65,12 @@ function enqueue_react_app_scripts() {
                 );
             }
         }
+
+        // Localize data for the footer script (same WPGlobalData or you can rename)
+        wp_localize_script( 'react-app-footer', 'WPGlobalData', $global_data );
     }
 
-    // 3. Page-Specific Script
+    // 4) Page-Specific Script
     $manifest_key = '';
     $handle       = '';
 
@@ -74,18 +82,18 @@ function enqueue_react_app_scripts() {
         $handle       = 'react-app-page';
     }
 
-    if ( $manifest_key && isset( $manifest[ $manifest_key ]['file'] ) ) {
+    if ( $manifest_key && isset( $manifest[$manifest_key]['file'] ) ) {
         wp_enqueue_script(
             $handle,
-            $script_uri . $manifest[ $manifest_key ]['file'],
+            $script_uri . $manifest[$manifest_key]['file'],
             array('react-cdn', 'react-dom-cdn'),
             null,
             true
         );
 
         // Enqueue associated CSS if present
-        if ( isset( $manifest[ $manifest_key ]['css'] ) ) {
-            foreach ( $manifest[ $manifest_key ]['css'] as $css_file ) {
+        if ( isset( $manifest[$manifest_key]['css'] ) ) {
+            foreach ( $manifest[$manifest_key]['css'] as $css_file ) {
                 wp_enqueue_style(
                     $handle . '-css',
                     $script_uri . $css_file,
@@ -98,14 +106,11 @@ function enqueue_react_app_scripts() {
         // Add page-specific data
         $global_data['page'] = get_page_data();
 
-        // Build inline JS snippet for WPGlobalData
-        $inline_script = 'const WPGlobalData = ' . json_encode( $global_data ) . ';';
-
-        // Inject inline script BEFORE this script, so WPGlobalData is defined
-        wp_add_inline_script( $handle, $inline_script, 'before' );
+        // Localize data for the page script
+        wp_localize_script( $handle, 'WPGlobalData', $global_data );
     }
 }
-add_action( 'wp_enqueue_scripts', 'enqueue_react_app_scripts', 999 );
+add_action('wp_enqueue_scripts', 'enqueue_react_app_scripts', 999);
 
 /**
  * Add type="module" for certain script handles.
